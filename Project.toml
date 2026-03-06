@@ -1,0 +1,14 @@
+name = "PenguinAnalysis"
+uuid = "8b9f1e76-5e6f-4b6f-a6b3-2e5b9f8d7a41"
+version = "0.1.0"
+
+[deps]
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
