@@ -21,6 +21,7 @@
     @test rep.ndofs_total == 5
     @test rep.ndofs_active == 3
     @test rep.region === :all
+    @test rep.normkind === :LpVolume
     @test rep.p == 2
     @test rep.relative == false
 end

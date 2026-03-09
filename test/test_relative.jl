@@ -14,6 +14,7 @@
     @test rep.denominator !== nothing
     @test rep.denominator ≈ sqrt(52.0) atol=1e-12
     @test rep.value ≈ 0.5 atol=1e-12
+    @test rep.normkind === :LpVolume
     @test rep.relative == true
 
     @test_throws DomainError lp_error([1.0, 2.0], [0.0, 0.0], g; p=2, relative=true)

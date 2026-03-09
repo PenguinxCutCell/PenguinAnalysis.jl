@@ -6,17 +6,19 @@
 
 `PenguinAnalysis.jl` is a lightweight, solver-agnostic package for weighted discrete error norms and convergence utilities in the PenguinxCutCell ecosystem.
 
-It is designed to work directly from field arrays plus geometry/capacity-like wet measures (`V`) and optional `celltype`, without hard dependencies on PDE solver packages.
+It is designed to work directly from field arrays plus geometry/capacity-like measures (`V`, `interfacenorm`, `W`) and optional `celltype`, without hard dependencies on PDE solver packages.
 
 ## Scope (v0.1)
 
 - Weighted volume-integrated discrete `L^p` errors (`p >= 1` or `Inf`)
-- Regions: `:all`, `:cut`, `:full`
+- Weighted interface-only discrete `L^p` errors (`p >= 1` or `Inf`)
+- Weighted discrete bulk `H^1` seminorm errors (staggered second-kind geometry)
+- Regions (volume/H1): `:all`, `:cut`, `:full`
 - Absolute and relative modes
 - Scalar leaves and nested tuple field trees (vector, diphasic, mixed)
 - Compact error reports and convergence-order helpers
 
-## Mathematical definition
+## Volume `L^p` definition
 
 For one leaf:
 
@@ -36,7 +38,81 @@ For geometry adapters, `CellMeasure(obj)` accepts both conventions:
 - `obj.V` with `obj.celltype`
 - `obj.V` with `obj.cell_type` (used by `CartesianGeometry.jl`)
 
-## Quick start
+## Interface-only `L^p` definition
+
+For interface unknowns `phi_gamma` and discrete interface weights `Γ`:
+
+- finite `p`:
+  `||eγ||_{L_h^p(Γ)} = (sum_i Γ_i * |phi_gamma_i - phi_gamma_exact_i|^p)^(1/p)`
+- `p = Inf`:
+  `||eγ||_{L_h^Inf(Γ)} = max_{i: Γ_i>0} |phi_gamma_i - phi_gamma_exact_i|`
+
+Only entries with finite `Γ_i > 0` are active.
+
+`InterfaceMeasure(obj)` reads:
+- `obj.interfacenorm` (preferred)
+- `obj.Γ`
+- optional `obj.celltype` / `obj.cell_type`
+
+In `CartesianGeometry.jl`, `interfacenorm` is typically obtained from
+`integrate(Tuple{0}, ...)` and can be passed directly as `Γ`.
+
+Example:
+
+```julia
+using PenguinAnalysis
+
+Γ = [0.0, 0.3, 0.7, 0.0]
+gamma_geom = InterfaceMeasure(Γ)
+
+err_gamma = lp_interface_error(phi_gamma, phi_gamma_exact, gamma_geom; p=2)
+err_gamma_rel = lp_interface_error(phi_gamma, phi_gamma_exact, gamma_geom; p=2, relative=true)
+```
+
+## Bulk `H^1` seminorm definition
+
+For one scalar field `u`, discrete directional gradients are evaluated on staggered supports:
+
+`|e|_{H_h^1(R)} = (sum_d sum_j W_d[j] * |∂_d u_num - ∂_d u_exact|^2)^(1/2)`
+
+where:
+- `W_d` are staggered second-kind wet-volume weights,
+- region selection (`:all`, `:cut`, `:full`) is driven by primal `celltype` adjacency,
+- `:cut` keeps staggered samples touching at least one cut primal cell (`celltype == -1`),
+- `:full` keeps staggered samples whose adjacent primal cells are both full (`celltype == 1`).
+
+`h1_seminorm_error` requires explicit logical grid shape and spacing:
+
+```julia
+err = h1_seminorm_error(u, grad_exact, cellgeom, h1geom, dims, spacing;
+                        region=:all, relative=false)
+```
+
+Exact-gradient input modes:
+
+1. Mode A: exact directional gradients already sampled on staggered supports
+
+```julia
+grad_exact = (gx_exact, gy_exact)
+err = h1_seminorm_error(u, grad_exact, cellgeom, h1geom, dims, spacing)
+```
+
+2. Mode B: analytical directional derivative functions sampled at `Wbary`
+
+```julia
+gradfun = (dx_ue, dy_ue)
+err = h1_seminorm_error(u, gradfun, cellgeom, h1geom, dims, spacing)
+# each function is called as f(x...)
+```
+
+For geometry adapters, `H1Measure(obj)` reads:
+- required `obj.W`
+- optional `obj.Wbary`
+- optional `obj.celltype` / `obj.cell_type`
+
+For moving cases, pass final-time geometry only (final `celltype`, final `W`, optional final `Wbary`).
+
+## Quick start (volume)
 
 ```julia
 using PenguinAnalysis
@@ -70,16 +146,20 @@ err_mix = lp_error(((ux1, uy1), (ux2, uy2)),
                    ((gx1, gy1), (gx2, gy2)); p=2)
 ```
 
-## Moving geometry note
-
-For moving cases, pass end-of-step / final geometry measure only (e.g. `V^{n+1}`, final `celltype`).
-
 ## Public API
 
 - `CellMeasure`
+- `InterfaceMeasure`
+- `H1Measure`
 - `lp_error`
 - `lp_errors`
 - `lp_error_report`
+- `lp_interface_error`
+- `lp_interface_errors`
+- `lp_interface_error_report`
+- `h1_seminorm_error`
+- `h1_seminorm_errors`
+- `h1_seminorm_error_report`
 - `pairwise_orders`
 - `overall_order`
 
