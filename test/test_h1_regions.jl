@@ -16,14 +16,14 @@
     cellgeom = CellMeasure(ones(nx * ny); celltype=celltype)
     h1geom = H1Measure(W; celltype=celltype)
 
-    @test h1_seminorm_error(u, grad_exact, cellgeom, h1geom, dims, spacing; region=:all) ≈ sqrt(7.0) atol=1e-12
+    @test h1_seminorm_error(u, grad_exact, cellgeom, h1geom, dims, spacing; region=:all) ≈ sqrt(5.0) atol=1e-12
     @test h1_seminorm_error(u, grad_exact, cellgeom, h1geom, dims, spacing; region=:cut) ≈ sqrt(3.0) atol=1e-12
     @test h1_seminorm_error(u, grad_exact, cellgeom, h1geom, dims, spacing; region=:full) ≈ sqrt(2.0) atol=1e-12
 
     rep_all = h1_seminorm_error_report(u, grad_exact, cellgeom, h1geom, dims, spacing; region=:all)
-    @test rep_all.measure ≈ 7.0 atol=1e-12
+    @test rep_all.measure ≈ 5.0 atol=1e-12
     @test rep_all.ndofs_total == 7
-    @test rep_all.ndofs_active == 7
+    @test rep_all.ndofs_active == 5
     @test rep_all.normkind === :H1Semi
 
     g_notype = CellMeasure(ones(nx * ny))

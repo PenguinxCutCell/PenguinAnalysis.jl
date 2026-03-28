@@ -36,13 +36,19 @@ function _directional_gradient_leaf(u::AbstractVector, d::Int, dims::Tuple, spac
 end
 
 @inline function _h1_staggered_in_region(celltype_arr, I::CartesianIndex, d::Int, region::Symbol)
-    region === :all && return true
-
     N = length(Tuple(I))
     Ip = CartesianIndex(ntuple(k -> (k == d ? I[k] + 1 : I[k]), N))
 
     ct_minus = celltype_arr[I]
     ct_plus = celltype_arr[Ip]
+
+    # Exclude stencils touching empty cells (celltype == 0). Their directional
+    # differences are not physically meaningful in embedded-boundary settings.
+    (ct_minus == 0 || ct_plus == 0) && return false
+
+    if region === :all
+        return true
+    end
 
     if region === :cut
         return ct_minus == -1 || ct_plus == -1
@@ -186,7 +192,7 @@ function _h1_leaf_accum(
             for I in CartesianIndices(Gnum)
                 wi = Wd[I]
                 (isfinite(wi) && wi > zero(wi)) || continue
-                (region === :all || _h1_staggered_in_region(celltype_arr, I, d, region)) || continue
+                ((celltype_arr === nothing) || _h1_staggered_in_region(celltype_arr, I, d, region)) || continue
 
                 gni = Gnum[I]
                 gei = Gex[I]
@@ -205,7 +211,7 @@ function _h1_leaf_accum(
             for I in CartesianIndices(Gnum)
                 wi = Wd[I]
                 (isfinite(wi) && wi > zero(wi)) || continue
-                (region === :all || _h1_staggered_in_region(celltype_arr, I, d, region)) || continue
+                ((celltype_arr === nothing) || _h1_staggered_in_region(celltype_arr, I, d, region)) || continue
 
                 x = Bd[I]
                 _point_is_finite(x) || continue
